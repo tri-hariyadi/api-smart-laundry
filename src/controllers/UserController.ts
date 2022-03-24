@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import responseWrapper, { internalServerError } from '../utils/responseWrapper';
-import IUserController from '../interfaces/user.controller.interface';
+import IUserController from '../interfaces/controller.user.interface';
 import TokenData from '../interfaces/tokenData.interface';
 import DataStoredInToken from '../interfaces/dataStoredInToken';
 import User, { UserDocument, UserInput } from '../models/UserModel';

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import responseWrapper, { internalServerError } from '../utils/responseWrapper';
-import IRoleController from '../interfaces/role.controller';
+import IRoleController from '../interfaces/controller.role.interface';
 import Role, { RoleInput } from '../models/RoleModel';
 import ValidationException from '../exceptions/ValidationExeption';
 
