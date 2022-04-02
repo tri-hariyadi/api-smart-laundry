@@ -8,14 +8,14 @@ type FileNameCallback = (error: Error | null, filename: string) => void
 class UploadPhoto {
   private storage: StorageEngine;
 
-  constructor() {
-    this.storage = this.initializeStorage();
+  constructor(storagePath='') {
+    this.storage = this.initializeStorage(storagePath);
   }
 
-  private initializeStorage() {
+  private initializeStorage(storagePath: string) {
     return multer.diskStorage({
       destination: (req: Request, file: Express.Multer.File, cb: DestinationCallback) => {
-        cb(null, 'public/images');
+        cb(null, `public/images/${storagePath}`);
       },
       filename: (req: Request, file: Express.Multer.File, cb: FileNameCallback) => {
         cb(null, Date.now() + path.extname(file.originalname));
@@ -56,4 +56,4 @@ class UploadPhoto {
 
 }
 
-export default new UploadPhoto();
+export default UploadPhoto;

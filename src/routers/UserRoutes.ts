@@ -16,7 +16,7 @@ class UserRoutes extends BaseRouter {
     this.router.put('/users/:id', [verifyApiKeyCredential], UserController.updateUser);
     this.router.put('/users/security/:id', [verifyApiKeyCredential], UserController.updatePassword);
     this.router.post('/users/upload/:id',
-      [verifyApiKeyCredential, UploadPhoto.uploadSingle()], UserController.updatePhotoProfile);
+      [verifyApiKeyCredential, new UploadPhoto('users').uploadSingle()], UserController.updatePhotoProfile);
     this.router.delete('/users/:id', [verifyApiKeyCredential], UserController.deleteUser);
   }
 }

@@ -107,7 +107,7 @@ class UserController implements IUserController {
     if (!req.file) {
       res.status(400).send(responseWrapper(null, 'File tidak diupload', 400));
     } else {
-      User.updateOne({ _id: id }, {$set: { photoProfile: `${baseUrl}/public/images/${req.file.filename}` }})
+      User.updateOne({ _id: id }, {$set: { photoProfile: `${baseUrl}/public/images/user/${req.file.filename}` }})
         .exec((err) => {
           if (err) return res.status(500).send(internalServerError);
           return res.status(200).send(responseWrapper( null, 'Update profile berhasil', 200));

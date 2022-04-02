@@ -17,23 +17,27 @@ type ServicesDocument = Document & {
   _id: string;
   name: string;
   desc: string;
-  banner: string;
+  banner?: Array<string>;
   price: number;
+  quantityType: string;
+  laundry: string;
   subServices?: {
     _id: string;
     name: string;
     price: number;
-    banner: string;
+    banner?: string;
     type?: string;
-  },
-  promo?: string
+  }[],
+  promo?: string;
 }
 
 type ServicesInput = {
   name: ServicesDocument['name'];
   desc: ServicesDocument['desc'];
-  banner: ServicesDocument['banner'];
   price: ServicesDocument['price'];
+  quantityType: ServicesDocument['quantityType'];
+  laundry: ServicesDocument['laundry'];
+  banner?: ServicesDocument['banner'];
   subServices?: ServicesDocument['subServices'];
   promo?: ServicesDocument['promo'];
 }
@@ -48,16 +52,31 @@ const servicesSchema = new Schema(
       type: Schema.Types.String,
       required: [true, 'Deskripsi menu harus diisi']
     },
-    banner: {
-      type: Schema.Types.String,
-      required: [true, 'Banner menu harus diisi']
-    },
+    banner: [{
+      type: Schema.Types.String
+    }],
     price: {
       type: Schema.Types.Number,
       required: [true, 'Harga harus diisi']
     },
-    subServices: subServicesSchema,
-    promo: Schema.Types.ObjectId
+    quantityType: {
+      type: Schema.Types.String,
+      enum: {
+        values: ['kg', 'satuan'],
+        message: 'Tipe diskon hanya boleh diisi kg atau satuan'
+      },
+      required: [true, 'Tipe quantity harus diisi']
+    },
+    laundry: {
+      type:  Schema.Types.ObjectId,
+      ref: 'Laundry',
+      required: [true, 'Pemilik laundry harus diisi']
+    },
+    subServices: [subServicesSchema],
+    promo: {
+      type:  Schema.Types.ObjectId,
+      ref: 'Promo'
+    },
   },
   {
     collection: 'services',

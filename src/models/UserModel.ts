@@ -33,7 +33,7 @@ type UserDocument = Document & {
   },
   photoProfile?: string,
   password: string,
-  role: Schema.Types.ObjectId,
+  role: string,
   comparePassword(password: string, next: (err: Error | null, same: boolean | null) => void): void;
 }
 
@@ -43,7 +43,7 @@ type UserInput = {
   phoneNumber: UserDocument['phoneNumber'],
   address: UserDocument['address'],
   password: UserDocument['password'],
-  role: UserDocument['role']
+  role: UserDocument['role'],
 }
 
 const phoneValidators = [
