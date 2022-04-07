@@ -11,7 +11,7 @@ const subServicesSchema = new Schema({
   },
   banner: Schema.Types.String,
   type: Schema.Types.String
-}, { _id: false });
+});
 
 type ServicesDocument = Document & {
   _id: string;
@@ -29,6 +29,7 @@ type ServicesDocument = Document & {
     type?: string;
   }[],
   promo?: string;
+  rating?: number;
 }
 
 type ServicesInput = {
@@ -40,6 +41,7 @@ type ServicesInput = {
   banner?: ServicesDocument['banner'];
   subServices?: ServicesDocument['subServices'];
   promo?: ServicesDocument['promo'];
+  rating?: ServicesDocument['rating'];
 }
 
 const servicesSchema = new Schema(
@@ -77,6 +79,10 @@ const servicesSchema = new Schema(
       type:  Schema.Types.ObjectId,
       ref: 'Promo'
     },
+    ratings: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Ratings'
+    }]
   },
   {
     collection: 'services',

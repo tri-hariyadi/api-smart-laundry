@@ -4,12 +4,20 @@ import UploadPhoto from '../middlewares/multer.middleware';
 
 class ServicesRoutes extends BaseRouter {
   routes(): void {
-    this.router.post('/services/add', new UploadPhoto('services').uploadMultiple(), ServicesController.create);
+    const Uploads = new UploadPhoto('services');
+
+    this.router.post('/services/add', Uploads.uploadMultiple(), ServicesController.create);
     this.router.get('/services/:lat/:long', ServicesController.getServices);
-    this.router.get('/services/:id', ServicesController.getService);
-    this.router.put('/services/:id', new UploadPhoto('services').uploadMultiple(), ServicesController.update);
+    this.router.post('/services/:id', ServicesController.getService);
+    this.router.put('/services/:id', Uploads.uploadMultiple(), ServicesController.update);
     this.router.put('/services/addpromo/:id', ServicesController.addPromo);
     this.router.delete('/services/:id', ServicesController.delete);
+    this.router.put('/subservices/:id',
+      Uploads.uploadSingle(), ServicesController.addSubservices);
+    this.router.put('/subservices/:id/:id_sub',
+      Uploads.uploadSingle(), ServicesController.updateSubServices);
+    this.router.put('/subservices/delete/:id/:id_sub', ServicesController.deleteSubServices);
+    this.router.post('/services/rating/:id', ServicesController.addRating);
   }
 
 }

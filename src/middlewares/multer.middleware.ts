@@ -54,6 +54,16 @@ class UploadPhoto {
     }).array('image');
   }
 
+  public uploads() {
+    return multer({
+      storage: this.storage,
+      // limits: { fileSize: 1000000 },
+      fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+        this.checkFileType(file, cb);
+      }
+    });
+  }
+
 }
 
 export default UploadPhoto;

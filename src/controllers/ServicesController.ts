@@ -1,22 +1,38 @@
+import { unlinkSync } from 'fs';
 import { Request, Response } from 'express';
 import responseWrapper, { internalServerError } from '../utils/responseWrapper';
 import IServicesController from '../interfaces/controller.services.interface';
 import Services, { ServicesInput } from '../models/ServicesModel';
+import Ratings, { RatingInput } from '../models/RatingModel';
 import ValidationException from '../exceptions/ValidationExeption';
 import config, { IConfig } from '../utils/config';
 import Distance from '../utils/distance';
+import ErrorMessage from '../utils/errorMessage';
 
-const baseUrl = config(process.env.NODE_ENV as keyof IConfig).API_BASE_URl;
+const baseUrl = config(process.env.NODE_ENV as keyof IConfig).API_BASE_URl + '/';
+const imgPath = 'public/images/services/';
 type File = {
-    fieldname: '',
-    originalname: '',
-    encoding: '',
-    mimetype: '',
-    destination: '',
-    filename: '',
-    path: '',
-    size: 0
+    fieldname: string;
+    originalname: string;
+    encoding: string;
+    mimetype: string;
+    destination: string;
+    filename: string;
+    path: string;
+    size: number;
   }
+
+type SubServices = {
+  _id: string;
+  name: string;
+  price: number;
+  banner: string;
+  type: string;
+}
+
+interface ISubServices {
+  subServices: Array<SubServices>;
+}
 
 interface IServices {
   _id: string;
@@ -24,36 +40,30 @@ interface IServices {
   desc: string;
   banner: Array<string>;
   price: number;
-  subServices?: {
-    _id: string;
-    name: string;
-    price: number;
-    banner: string;
-    type: string;
-  },
+  subServices?: ISubServices,
   laundry: {
     user_id: {
-      fullName: string,
-      email: string,
-      phoneNumber: string,
+      fullName: string;
+      email: string;
+      phoneNumber: string;
       address: {
-        city: string,
-        street: string,
-        lat: number,
+        city: string;
+        street: string;
+        lat: number;
         long: number
-      },
-      role: string,
-    },
-    name: string,
-    domain: string,
+      };
+      role: string;
+    };
+    name: string;
+    domain: string;
   };
   promo?: {
     diskon: {
-      typeDiskon: string,
-      valueDiskon: number
+      typeDiskon: string;
+      valueDiskon: number;
     },
   },
-  distance: number
+  distance: number;
 }
 
 class ServicesController implements IServicesController {
@@ -61,12 +71,12 @@ class ServicesController implements IServicesController {
     const banner: Array<string> = [];
     if (req.files?.length) {
       for (let i = 0; i < req.files.length; i++) {
-        banner.push(`${baseUrl}/public/images/services/${(req.files as Array<File>)[i].filename}`);
+        banner.push(`${baseUrl + imgPath + (req.files as Array<File>)[i].filename}`);
       }
     }
-    const { name, desc, price, subServices, laundry } = JSON.parse(req.body.data);
+    const { name, desc, price, quantityType, subServices, laundry } = JSON.parse(req.body.data);
     const serviceInput: ServicesInput = {
-      name, desc, banner, price, subServices, laundry
+      name, desc, banner, price, quantityType, subServices, laundry
     };
     const services = new Services(serviceInput);
     const error = services.validateSync();
@@ -76,6 +86,110 @@ class ServicesController implements IServicesController {
       if (err) return res.status(500).send(internalServerError);
       return res.status(200).send(responseWrapper( null, 'Service berhasil ditambahkan', 200));
     });
+  }
+
+  async addSubservices(req: Request, res: Response): Promise<void> {
+    let services: ISubServices | null;
+    let banner: string;
+    const { id } = req.params;
+    if (req.file) {
+      try {
+        services = await Services.findOne({ _id: id }, 'subServices -_id');
+        if (!services) {
+          throw new Error(`Service dengan id ${id}, tidak ditemukan`);
+        } else {
+          banner = `${baseUrl + imgPath + req.file.filename}`;
+          const subServices: SubServices = JSON.parse(req.body.data).subServices;
+          subServices.banner = banner;
+          const data: Array<SubServices> = [...services.subServices, subServices];
+          Services.updateOne({ _id: id }, { subServices: data })
+            .exec((err) => {
+              if (err) {
+                unlinkSync(`${imgPath + req.file?.filename}`);
+                return res.status(500).send(internalServerError);
+              } else {
+                res.status(200).send(responseWrapper(null, 'Berhasil menambahkan sub service', 200));
+              }
+            });
+        }
+      } catch (error) {
+        unlinkSync(`${imgPath + req.file.filename}`);
+        const message = ErrorMessage.getErrorMessage(error);
+        if (message) res.status(400).send(responseWrapper(400, message, 400));
+        else res.status(500).send(internalServerError);
+      }
+    } else {
+      res.status(400).send(responseWrapper(null, 'Banner harus diupload', 400));
+    }
+  }
+
+  async updateSubServices(req: Request, res: Response): Promise<void> {
+    let services: ISubServices | null;
+    let imgLink: string;
+    const { id, id_sub } = req.params;
+    try {
+      services = await Services.findOne({ _id: id }, 'subServices -_id');
+      if (!services) {
+        throw new Error('Data tidak ditemukan');
+      } else {
+        const subServices: SubServices = JSON.parse(req.body.data).subServices;
+        if (req.file) subServices.banner = `${baseUrl + imgPath + req.file.filename}`;
+        const data: Array<SubServices> = JSON.parse(JSON.stringify(services.subServices));
+        const idx = data.findIndex(({ _id }) => _id === id_sub);
+        if (idx > -1) {
+          imgLink = data[idx].banner.split('/')[6];
+          data[idx] = { ...data[idx], ...subServices };
+          Services.updateOne({ _id: id }, { subServices: data })
+            .exec((err) => {
+              if (err) {
+                if (req.file) unlinkSync(`${imgPath + req.file.filename}`);
+                return res.status(500).send(internalServerError);
+              } else {
+                if (req.file) unlinkSync(`${imgPath + imgLink}`);
+                res.status(200).send(responseWrapper(null, 'Berhasil mengupdate sub service', 200));
+              }
+            });
+        } else throw new Error('Sub service tidak ditemukan');
+      }
+    } catch (error) {
+      if (req.file) unlinkSync(`${imgPath + req.file.filename}`);
+      const message = ErrorMessage.getErrorMessage(error);
+      if (message) res.status(400).send(responseWrapper(400, message, 400));
+      else res.status(500).send(internalServerError);
+    }
+  }
+
+  async deleteSubServices(req: Request, res: Response): Promise<void> {
+    let subServices: Array<SubServices>;
+    let services: ISubServices | null;
+    let imgLink: string;
+    const { id, id_sub } = req.params;
+    try {
+      services = await Services.findOne({ _id: id }, 'subServices -_id');
+      if (!services) {
+        throw new Error('Data tidak ditemukan');
+      } else {
+        subServices = JSON.parse(JSON.stringify(services.subServices));
+        const idx = subServices.findIndex(({ _id }) => _id === id_sub);
+        if (idx > -1) {
+          imgLink = subServices[idx].banner.split('/')[6];
+          subServices.splice(idx, 1);
+        } else throw new Error('Sub service tidak ditemukan');
+        Services.updateOne({ _id: id }, { subServices })
+          .exec((err) => {
+            if (err) {
+              res.status(500).send(internalServerError);
+            } else {
+              unlinkSync(`${imgPath + imgLink}`);
+              res.status(200).send(responseWrapper(null, 'Berhasil menghapus sub service', 200));
+            }
+          });
+      }
+    } catch (error) {
+      const message = ErrorMessage.getErrorMessage(error);
+      if (message) res.status(400).send(responseWrapper(400, message, 400));
+      else res.status(500).send(internalServerError);
+    }
   }
 
   async getServices(req: Request, res: Response): Promise<void> {
@@ -117,7 +231,8 @@ class ServicesController implements IServicesController {
 
   getService(req: Request, res: Response): void {
     const { id } = req.params;
-    Services.findOne({ _id: id }).populate({
+    const { lat, long } = req.body;
+    Services.findOne({ _id: id }, '-__v').populate({
       path: 'laundry',
       select: '-_id -createdAt -updatedAt -__v',
       populate: {
@@ -126,22 +241,36 @@ class ServicesController implements IServicesController {
       }
     }).exec((err, result) => {
       if (err) return res.status(500).send(internalServerError);
-      res.status(200).send(responseWrapper(result, 'Success get service', 200));
+      if (result) {
+        Ratings.find({ id_service: id }, '-_id -__v').exec((err, ratings) => {
+          if (err) return res.status(500).send(internalServerError);
+          const data: IServices = JSON.parse(JSON.stringify(result));
+          const lat2 = data.laundry.user_id.address.lat;
+          const long2 = data.laundry.user_id.address.long;
+          const distance = new Distance(Number(lat), Number(long), lat2, long2).getDistance();
+          let totalRating = 0;
+          ratings.forEach(item => ( totalRating += Number(item.rating) ));
+          const ratingAverage = totalRating/ratings.length;
+          return res.status(200).send(responseWrapper(
+            {...data, distance, ratings, ratingAverage}, 'Success get service', 200));
+        });
+      }
+      else res.status(400).send(responseWrapper(null, 'Data tidak ditemukan', 400));
     });
   }
 
   update(req: Request, res: Response): void {
     const { id } = req.params;
-    const { name, desc, price, subServices, laundry, banner } = JSON.parse(req.body.data);
+    const { name, desc, price, quantityType, subServices, laundry, banner } = JSON.parse(req.body.data);
     let Banner: Array<string> = [];
     if (banner && banner.length) Banner = [...banner];
     if (req.files?.length) {
       for (let i = 0; i < req.files.length; i++) {
-        Banner.push(`${baseUrl}/public/images/services/${(req.files as Array<File>)[i].filename}`);
+        Banner.push(`${baseUrl + imgPath + (req.files as Array<File>)[i].filename}`);
       }
     }
     const serviceInput: ServicesInput = {
-      name, desc, banner: Banner, price, subServices, laundry
+      name, desc, banner: Banner, price, quantityType, subServices, laundry
     };
     const services = new Services(serviceInput);
     const error = services.validateSync();
@@ -165,6 +294,20 @@ class ServicesController implements IServicesController {
         res.status(500).send(internalServerError);
       }
       res.status(200).send(responseWrapper(null, 'Berhasil menambahkan promo', 200));
+    });
+  }
+
+  addRating(req: Request, res: Response): void {
+    const { id } = req.params;
+    const { name, rating, comment } = req.body;
+    const ratingInput: RatingInput = { name, rating, comment, id_service: id };
+    const newRating = new Ratings(ratingInput);
+    const error = newRating.validateSync();
+
+    if (error) new ValidationException().validationError(error, res);
+    else newRating.save((err) => {
+      if (err) return res.status(500).send(internalServerError);
+      res.status(200).send(responseWrapper(200, 'Berhasil menambahkan rating', 200));
     });
   }
 

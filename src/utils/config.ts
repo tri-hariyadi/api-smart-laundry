@@ -22,7 +22,7 @@ const config = (env: keyof IConfig): environtment => {
       SECRET: 'mysecret',
       DATABASE: 'mongodb://localhost:27017/laundry_app',
       APIKEY: '9515328e-d485-4d3e-b0e3-7bf20be04926',
-      API_BASE_URl: 'localhost:8081'
+      API_BASE_URl: 'http://localhost:8081'
     }
   };
 
