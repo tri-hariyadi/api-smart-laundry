@@ -12,6 +12,7 @@ interface IData {
     Amount: string,
     BeneficiaryAccountNumber: string,
     Remark1: string,
+    Remark2: string,
   }
 
 interface IRequest {
