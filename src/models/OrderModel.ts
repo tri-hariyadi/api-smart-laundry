@@ -21,6 +21,11 @@ type OrderDocument = Document & {
   total: number;
   note?: string;
   payment: string;
+  progress?: {
+    name: string,
+    desc: string,
+    status?: string
+  }[];
   id_merchant: string;
   id_customer: string;
 }
@@ -65,6 +70,23 @@ const subServiceSchema = new Schema({
   tag: Schema.Types.String
 }, { _id: false });
 
+const progressSchema = new Schema({
+  name: {
+    type: Schema.Types.String,
+    required: [true, 'Nama proses harus diisi']
+  },
+  desc: Schema.Types.String,
+  status: {
+    type: Schema.Types.String,
+    enum: {
+      values: ['0', '1'],
+      message: 'Status hanya boleh diisi 0 atau 1'
+    },
+    required: [true, 'Tipe quantity harus diisi'],
+    default: '0'
+  }
+});
+
 const orderSchema = new Schema(
   {
     service: {
@@ -104,6 +126,10 @@ const orderSchema = new Schema(
       ref: 'User',
       required: [true, 'Customer harus diisi']
     },
+    progress: {
+      type: [progressSchema],
+      required: [true, 'Progress harus diisi']
+    }
   },
   {
     collection: 'order',
@@ -120,6 +146,34 @@ const orderSchema = new Schema(
     },
   }
 );
+
+orderSchema.pre('save', function (this: OrderDocument, next: (err?: Error | undefined) => void) {
+  if (this.isModified('progress') || this.isNew) {
+    this.progress = [
+      {
+        name: 'Confirmed',
+        desc: 'Order telah dikonfirmasi oleh pihak laundry',
+        status: '1'
+      },
+      {
+        name: 'Picked up',
+        desc: '',
+      },
+      {
+        name: 'In Process',
+        desc: '',
+      },
+      {
+        name: 'Shipped',
+        desc: '',
+      },
+      {
+        name: 'Delivered',
+        desc: '',
+      }
+    ];
+  } else next();
+});
 
 const Order: Model<OrderDocument> = mongoose.model<OrderDocument>('Order', orderSchema);
 

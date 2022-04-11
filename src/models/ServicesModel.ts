@@ -65,7 +65,7 @@ const servicesSchema = new Schema(
       type: Schema.Types.String,
       enum: {
         values: ['kg', 'satuan'],
-        message: 'Tipe diskon hanya boleh diisi kg atau satuan'
+        message: 'Tipe quantity hanya boleh diisi kg atau satuan'
       },
       required: [true, 'Tipe quantity harus diisi']
     },

@@ -72,6 +72,32 @@ class OrderController implements IOrderController {
     }
   }
 
+  async updateProgress(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { name, desc, status } = req.body;
+    try {
+      const order = await Order.findOne({ _id: id }, '-__v progress');
+      if (!order) throw new Error('Order tidak ditemukan');
+      if (!desc) throw new Error('Deskripsi proses harus diisi');
+      if (!status) throw new Error('Status proses harus diisi');
+
+      const progress = [...JSON.parse(JSON.stringify(order.progress))];
+      const idx = progress.findIndex(el => el.name === name);
+      if (idx > -1) progress[idx] = { ...progress[idx], desc, status };
+      else throw new Error('Progress tidak ditemukan');
+
+      Order.updateOne({ _id: id }, { progress })
+        .exec(err => {
+          if (err) throw new Error(undefined);
+          res.status(200).send(responseWrapp(null, 'Berhasil mengupdate progress', 200));
+        });
+    } catch (error) {
+      const message = ErrorMessage.getErrorMessage(error);
+      if (message) res.status(400).send(responseWrapp(400, message, 400));
+      else res.status(500).send(internalServerError);
+    }
+  }
+
 }
 
 export default new OrderController();
