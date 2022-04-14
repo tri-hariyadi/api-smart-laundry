@@ -10,6 +10,7 @@ interface IUserController {
   getAllUsers(req: Request, res: Response): void;
   getUserById(req: Request, res: Response): void;
   deleteUser(req: Request, res: Response): void;
+  refreshToken(req: Request, res: Response): void;
 }
 
 export default IUserController;

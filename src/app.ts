@@ -5,20 +5,18 @@ import compression from 'compression';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import csurf from 'csurf';
 import { config as dotenv } from 'dotenv';
 import errorMiddleware from './middlewares/error.middleware';
 import NotfoundException from './exceptions/NotfoundException';
 import BaseRouter from './routers/BaseRouter';
 import initDB from './utils/initDB';
+import { verifyApiKeyCredential } from './middlewares/verifycredentials.middleware';
 
 class App {
   public app: Application;
-  private csrfProtection: express.RequestHandler;
 
   constructor(controller: Array<BaseRouter>) {
     this.app = express();
-    this.csrfProtection = csurf({ cookie: true });
     this.connectToTheDatabase();
     this.plugins();
     this.initializeControllers(controller);
@@ -33,7 +31,7 @@ class App {
       extended: true
     }));
     this.app.use(cookieParser());
-    this.app.use(this.csrfProtection);
+    this.app.use(verifyApiKeyCredential);
     this.app.use(morgan('dev'));
     this.app.use(compression());
     this.app.use(helmet());
@@ -50,9 +48,6 @@ class App {
   }
 
   private initializeControllers(controllers: Array<BaseRouter>) {
-    this.app.get('/csrf-token', (req, res) => {
-      res.json({ csrfToken: req.csrfToken() });
-    });
     controllers.forEach((controller) => {
       this.app.use('/api/v1', controller.router);
     });

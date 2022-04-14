@@ -1,14 +1,17 @@
+import { unlinkSync } from 'fs';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import responseWrapper, { internalServerError } from '../utils/responseWrapper';
 import IUserController from '../interfaces/controller.user.interface';
-import TokenData from '../interfaces/tokenData.interface';
-import DataStoredInToken from '../interfaces/dataStoredInToken';
 import User, { UserDocument, UserInput } from '../models/UserModel';
 import config, { IConfig } from '../utils/config';
 import ValidationException from '../exceptions/ValidationExeption';
+import JwtSign from '../utils/jwtSign';
+import client from '../utils/initRedis';
+import ErrorMessage from '../utils/errorMessage';
 
 const baseUrl = config(process.env.NODE_ENV as keyof IConfig).API_BASE_URl;
+interface DataPayload { aud: string }
 
 class UserController implements IUserController {
   register(req: Request, res: Response): void {
@@ -40,34 +43,33 @@ class UserController implements IUserController {
           } else if (!isMatch) {
             return res.status(400).send(responseWrapper(null, 'Password tidak valid', 400));
           }
-
-          const createCookie = (tokenData: TokenData): string => {
-            return `Authorization=${tokenData.token}; HttpOnly; Max-Age=${tokenData.expiresIn}`;
-          };
-
-          const createToken = (user: UserDocument): TokenData => {
-            const EXPIRES_IN = 60 * 60;
-            const SECRET = config(process.env.NODE_ENV as keyof IConfig)?.SECRET || '';
-            const dataStoredInToken: DataStoredInToken = {
-              id: user._id
-            };
-            return {
-              expiresIn: EXPIRES_IN,
-              token: jwt.sign(dataStoredInToken, SECRET, { expiresIn: EXPIRES_IN })
-            };
-          };
-
-          const tokenData = createToken(result);
-          res.setHeader('Set-Cookie', [createCookie(tokenData)]);
-          return res.status(200).send(responseWrapper(null, 'Berhasil Login', 200));
+          new JwtSign(result).createToken()
+            .then(response => res.status(200).send(responseWrapper(response, 'Berhasil Login', 200)))
+            .catch(() => res.status(500).send(internalServerError));
         });
       }
     });
   }
 
   logout(req: Request, res: Response): void {
-    res.setHeader('Set-Cookie', ['Authorization=;Max-age=0']);
-    res.status(200).send(responseWrapper(null, 'Anda telah logout', 200));
+    try {
+      const bearerHeader = req.headers['authorization'];
+      if (!bearerHeader) throw new Error('Autentikasi token tidak ada');
+      const bearerToken = bearerHeader.split(' ')[1];
+      const payload = jwt.decode(bearerToken, { complete: true })?.payload as DataPayload;
+      client.del(payload.aud)
+        .then(reply => {
+          if (reply === 1) res.status(200).send(responseWrapper(null, 'Berhasil logout', 200));
+          else res.status(200).send(responseWrapper(null, 'Autentikasi token tidak valid', 200));
+        })
+        .catch(() => {
+          throw new Error('Internal Server Error');
+        });
+    } catch (error) {
+      const message = ErrorMessage.getErrorMessage(error);
+      if (message) res.status(400).send(responseWrapper(400, message, 400));
+      else res.status(500).send(internalServerError);
+    }
   }
 
   updateUser(req: Request, res: Response): void {
@@ -107,9 +109,12 @@ class UserController implements IUserController {
     if (!req.file) {
       res.status(400).send(responseWrapper(null, 'File tidak diupload', 400));
     } else {
-      User.updateOne({ _id: id }, {$set: { photoProfile: `${baseUrl}/public/images/user/${req.file.filename}` }})
+      User.updateOne({ _id: id }, {$set: { photoProfile: `${baseUrl}/public/images/users/${req.file.filename}` }})
         .exec((err) => {
-          if (err) return res.status(500).send(internalServerError);
+          if (err) {
+            unlinkSync(`public/images/users/${req.file?.filename}`);
+            return res.status(500).send(internalServerError);
+          }
           return res.status(200).send(responseWrapper( null, 'Update profile berhasil', 200));
         });
     }
@@ -143,15 +148,35 @@ class UserController implements IUserController {
 
   deleteUser(req: Request, res: Response): void {
     const { id } = req.params;
-    User.deleteOne({ _id: id }, {}, (err) => {
+    User.findOneAndDelete({ _id: id }, {}, (err, result) => {
       if (err) {
         if (err.message) return res.status(400).send(responseWrapper(null,
           `Data dengan id ${id}, tidak ditemukan atau tidak valid`, 400));
         return res.status(500).send(internalServerError);
       } else {
+        if (result?.photoProfile) {
+          const imgPath = result.photoProfile.split('/');
+          const imgLink = imgPath.splice(3, imgPath.length).join('/');
+          unlinkSync(imgLink);
+        }
         return res.status(200).send(responseWrapper(null, 'Berhasil menghapus data user', 200));
       }
     });
+  }
+
+  refreshToken(req: Request, res: Response): void {
+    try {
+      const bearerHeader = req.headers['authorization'];
+      const bearerToken = bearerHeader?.split(' ')[1] as string;
+      const payload = jwt.decode(bearerToken, { complete: true })?.payload as DataPayload;
+      new JwtSign({ id: payload.aud } as UserDocument).createToken()
+        .then(response => res.status(200).send(responseWrapper(response, 'Refresh token berhasil', 200)))
+        .catch(() => res.status(500).send(internalServerError));
+    } catch (error) {
+      const message = ErrorMessage.getErrorMessage(error);
+      if (message) res.status(400).send(responseWrapper(400, message, 400));
+      else res.status(500).send(internalServerError);
+    }
   }
 
 }

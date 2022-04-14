@@ -1,8 +1,9 @@
 type environtment = {
-  SECRET: string | undefined;
   DATABASE: string | undefined;
   APIKEY: string | undefined;
   API_BASE_URl: string | undefined;
+  ACCESS_TOKEN_SECRET: string | undefined;
+  REFRESH_TOKEN_SECRET: string | undefined;
 }
 
 interface IConfig {
@@ -13,16 +14,18 @@ interface IConfig {
 const config = (env: keyof IConfig): environtment => {
   const configEnv: IConfig = {
     production: {
-      SECRET: process.env.SECRET,
       DATABASE: process.env.MONGODB_URI,
       APIKEY: process.env.API_KEY,
-      API_BASE_URl: process.env.API_BASE_URl
+      API_BASE_URl: process.env.API_BASE_URl,
+      ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
+      REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET
     },
     default: {
-      SECRET: 'mysecret',
       DATABASE: 'mongodb://localhost:27017/laundry_app',
       APIKEY: '9515328e-d485-4d3e-b0e3-7bf20be04926',
-      API_BASE_URl: 'http://localhost:8081'
+      API_BASE_URl: 'http://localhost:8081',
+      ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
+      REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET
     }
   };
 

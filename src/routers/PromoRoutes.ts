@@ -1,13 +1,16 @@
 import BaseRouter from './BaseRouter';
 import PromoController from '../controllers/PromoController';
+import AuthMiddleware from '../middlewares/auth.middleware';
 
 class PromoRoutes extends BaseRouter {
   routes(): void {
-    this.router.post('/promo/add', PromoController.create);
-    this.router.get('/promos/:laundry_id', PromoController.getAll);
-    this.router.get('/promo/:id', PromoController.getByServiceId);
-    this.router.put('/promo/:id', PromoController.update);
-    this.router.delete('/promo/:id', PromoController.delete);
+    const authJwt = AuthMiddleware.verifyAccessToken;
+
+    this.router.post('/promo/add', authJwt, PromoController.create);
+    this.router.get('/promos/:laundry_id', authJwt, PromoController.getAll);
+    this.router.get('/promo/:id', authJwt, PromoController.getByServiceId);
+    this.router.put('/promo/:id', authJwt, PromoController.update);
+    this.router.delete('/promo/:id', authJwt, PromoController.delete);
   }
 
 }
