@@ -1,6 +1,7 @@
 import { unlinkSync } from 'fs';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import responseWrapper, { internalServerError } from '../utils/responseWrapper';
 import IUserController from '../interfaces/controller.user.interface';
 import User, { UserDocument, UserInput } from '../models/UserModel';
@@ -10,7 +11,7 @@ import JwtSign from '../utils/jwtSign';
 import client from '../utils/initRedis';
 import ErrorMessage from '../utils/errorMessage';
 
-const baseUrl = config(process.env.NODE_ENV as keyof IConfig).API_BASE_URl;
+const baseUrl: any = config(process.env.NODE_ENV as keyof IConfig).API_BASE_URl;
 interface DataPayload { aud: string }
 
 class UserController implements IUserController {
@@ -35,7 +36,9 @@ class UserController implements IUserController {
       if (err) {
         return res.status(500).send(internalServerError);
       } else if (!result) {
-        res.status(404).send(responseWrapper(null, 'Email tidak terdaftar', 404));
+        setTimeout(() => {
+          res.status(404).send(responseWrapper(null, 'Email tidak terdaftar', 404));
+        }, 5000);
       } else {
         result.comparePassword(password, (matchError, isMatch) => {
           if (matchError) {
@@ -53,14 +56,15 @@ class UserController implements IUserController {
 
   logout(req: Request, res: Response): void {
     try {
+      const { dataToken } = req.body;
       const bearerHeader = req.headers['authorization'];
       if (!bearerHeader) throw new Error('Autentikasi token tidak ada');
       const bearerToken = bearerHeader.split(' ')[1];
       const payload = jwt.decode(bearerToken, { complete: true })?.payload as DataPayload;
-      client.del(payload.aud)
+      client.lRem(payload.aud, 1, JSON.stringify(dataToken))
         .then(reply => {
-          if (reply === 1) res.status(200).send(responseWrapper(null, 'Berhasil logout', 200));
-          else res.status(200).send(responseWrapper(null, 'Autentikasi token tidak valid', 200));
+          if (reply > 0) res.status(200).send(responseWrapper(null, 'Berhasil logout', 200));
+          else res.status(401).send(responseWrapper(null, 'Autentikasi token tidak valid', 401));
         })
         .catch(() => {
           throw new Error('Internal Server Error');
@@ -69,6 +73,20 @@ class UserController implements IUserController {
       const message = ErrorMessage.getErrorMessage(error);
       if (message) res.status(400).send(responseWrapper(400, message, 400));
       else res.status(500).send(internalServerError);
+    }
+  }
+
+  changeFcmToken(req: Request, res: Response): void {
+    const { userId, fcmToken } = req.body;
+    if (!userId) {
+      res.status(400).send(responseWrapper(null, 'Id user harus diisi', 400));
+    } else if (!fcmToken) {
+      res.status(400).send(responseWrapper(null, 'Invalid FcmToken', 400));
+    } else {
+      User.updateOne({ _id: userId }, { fcmToken }).exec((err) => {
+        if (err) return res.status(500).send(internalServerError);
+        return res.status(200).send(responseWrapper( null, 'Berhasil update fcmToken', 200));
+      });
     }
   }
 
@@ -132,18 +150,72 @@ class UserController implements IUserController {
     });
   }
 
-  getUserById(req: Request, res: Response): void {
-    const { id } = req.params;
-    User.findOne({ _id: id }, '-password', {}, (err, result) => {
-      if (err) {
-        if (err.message) return res.status(400).send(responseWrapper(null,
+  async getUserById(req: Request, res: Response): Promise<void> {
+    const { id, role } = req.params;
+    if (role === 'user') {
+      User.findOne({_id: id}, '-password', {}).populate('role')
+        .exec((err, result) => {
+          if (err) return res.status(500).send(internalServerError);
+          if (!result) return res.status(400).send(responseWrapper(null,
+            `Data dengan id ${id}, tidak ditemukan atau tidak valid`, 400));
+          return res.status(200).send(responseWrapper(result, 'Berhasil mendapatkan data user', 200));
+        });
+    } else {
+      User.aggregate([
+        {
+          $match: {
+            '_id': new mongoose.Types.ObjectId(id)
+          }
+        },
+        {
+          '$lookup': {
+            'from': 'laundry',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$user_id', '$$userId'] }
+                    ],
+                  },
+                },
+              },
+              { $unset: ['__v', 'createdAt', 'updatedAt'] }
+            ],
+            'as': 'laundry',
+          }
+        },
+        {
+          '$lookup': {
+            'from': 'roles',
+            let: { role_id: '$role' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$_id', '$$role_id'] }
+                    ],
+                  },
+                },
+              },
+              { $unset: ['__v', 'createdAt', 'updatedAt'] }
+            ],
+            'as': 'role'
+          }
+        },
+        { $unwind: '$laundry' },
+        { $unwind: '$role' },
+        { $unset: ['__v', 'password'] }
+      ]).exec(function(err, results){
+        if (err) return res.status(500).send(internalServerError);
+        if (!results.length) return res.status(400).send(responseWrapper(null,
           `Data dengan id ${id}, tidak ditemukan atau tidak valid`, 400));
-        return res.status(500).send(internalServerError);
-      } else if (!result) {
-        return res.status(404).send(responseWrapper(null, 'Data user tidak ditemukan', 404));
-      }
-      return res.status(200).send(responseWrapper(result, 'Berhasil mendapatkan data user', 200));
-    });
+        return res.status(200).send(responseWrapper(results[0], 'Berhasil mendapatkan data user', 200));
+      });
+    }
+
   }
 
   deleteUser(req: Request, res: Response): void {

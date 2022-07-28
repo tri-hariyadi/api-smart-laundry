@@ -4,7 +4,7 @@ import client from './initRedis';
 import { UserDocument } from '../models/UserModel';
 
 class JwtSign {
-  private EXPIRES_IN = 60*60;
+  private EXPIRES_IN = 3600 * 60 * 60;
   private ACCESS_TOKEN_SECRET = config(process.env.NODE_ENV as keyof IConfig)?.ACCESS_TOKEN_SECRET || '';
   private REFRESH_TOKEN_SECRET = config(process.env.NODE_ENV as keyof IConfig)?.REFRESH_TOKEN_SECRET || '';
   private payload: JwtPayload = {};
@@ -30,7 +30,7 @@ class JwtSign {
         accessToken: jwt.sign(this.payload, this.ACCESS_TOKEN_SECRET, optionsAccessToken),
         refreshToken: jwt.sign(this.payload, this.REFRESH_TOKEN_SECRET, optionsRefreshToken),
       };
-      client.set(this.user.id, JSON.stringify(payloads), { EX: 2 * this.EXPIRES_IN })
+      client.rPush(this.user.id, JSON.stringify(payloads))
         .then(() => resolve(payloads))
         .catch(err => reject(JSON.parse(JSON.stringify(err))));
     });

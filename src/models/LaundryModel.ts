@@ -27,7 +27,11 @@ const laundrySchema = new Schema(
     },
     domain: {
       type: Schema.Types.String,
-      required: [true, 'Domain harus diisi']
+    },
+    status: {
+      type: Schema.Types.Boolean,
+      required:  false,
+      default: false
     }
   },
   {

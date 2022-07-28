@@ -6,6 +6,7 @@ type RatingDocument = Document & {
   rating: string;
   comment: string;
   id_service: string;
+  sub_service?: string;
 }
 
 type RatingInput = {
@@ -13,6 +14,7 @@ type RatingInput = {
   rating: RatingDocument['rating'];
   comment: RatingDocument['comment'];
   id_service: RatingDocument['id_service'];
+  sub_service?: RatingDocument['sub_service'];
 }
 
 const ratingSchema = new Schema(
@@ -28,7 +30,12 @@ const ratingSchema = new Schema(
     comment: Schema.Types.String,
     id_service: {
       type:  Schema.Types.ObjectId,
-      required: [true, 'Id service harus diisi']
+      required: [true, 'Id service harus diisi'],
+      ref:'Services'
+    },
+    sub_service: {
+      type:  Schema.Types.String,
+      required: false
     }
   },
   {

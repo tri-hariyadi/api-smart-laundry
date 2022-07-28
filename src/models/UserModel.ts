@@ -2,13 +2,17 @@ import mongoose, { Schema, Model, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const addressSchema = new mongoose.Schema({
-  city: {
+  addressName: {
     type: Schema.Types.String,
-    required: [true, 'Kota harus diisi']
+    required: [true, 'Nama alamat harus diisi']
   },
-  street: {
+  address: {
     type: Schema.Types.String,
-    required: [true, 'Jalan harus diisi']
+    required: [true, 'Alamat harus diisi']
+  },
+  detailAddress: {
+    type: Schema.Types.String,
+    required: [true, 'Detail alamat harus diisi']
   },
   lat: {
     type: Schema.Types.Number,
@@ -21,19 +25,21 @@ const addressSchema = new mongoose.Schema({
 }, { _id: false });
 
 type UserDocument = Document & {
-  _id: string,
+  _id: string;
   fullName: string;
-  email: string,
-  phoneNumber: string,
-  address: {
-    city: string,
-    street: string,
-    lat: number,
-    long: number
-  },
-  photoProfile?: string,
-  password: string,
-  role: string,
+  email: string;
+  phoneNumber: string;
+  address?: {
+    addressName: string;
+    address: string;
+    detailAddress: string;
+    lat: number;
+    long: number;
+  };
+  photoProfile?: string;
+  password: string;
+  role: string;
+  fcmToken?: string;
   comparePassword(password: string, next: (err: Error | null, same: boolean | null) => void): void;
 }
 
@@ -41,9 +47,11 @@ type UserInput = {
   fullName: UserDocument['fullName'];
   email: UserDocument['email'],
   phoneNumber: UserDocument['phoneNumber'],
-  address: UserDocument['address'],
+  address?: UserDocument['address'],
+  photoProfile?: UserDocument['photoProfile'],
   password: UserDocument['password'],
   role: UserDocument['role'],
+  fcmToken?: UserDocument['fcmToken'],
 }
 
 const phoneValidators = [
@@ -78,7 +86,7 @@ const userSchema = new Schema(
     },
     address: {
       type: addressSchema,
-      required: [true, 'Alamat harus diisi']
+      required: false,
     },
     photoProfile: {
       type: Schema.Types.String
@@ -93,6 +101,10 @@ const userSchema = new Schema(
       ref: 'Role',
       required: [true, 'Role harus diisi'],
       index: true
+    },
+    fcmToken: {
+      type: Schema.Types.String,
+      required: false
     }
   },
   {
@@ -124,19 +136,19 @@ userSchema.pre('save', function (this: UserDocument, next: (err?: Error | undefi
   } else next();
 });
 
-userSchema.pre('updateOne', function (next: (err?: Error | undefined) => void) {
-  const update = this.getUpdate();
-  if (update.password) {
-    bcrypt.genSalt(10, (saltError, salt) => {
-      if (saltError) return next(saltError);
-      else bcrypt.hash(update.password, salt, (hashError: Error, hash: string) => {
-        if (hashError) return next(hashError);
-        this.getUpdate().password = hash;
-        next();
-      });
-    });
-  } else next();
-});
+// userSchema.pre('updateOne', function (next: (err?: Error | undefined) => void) {
+//   const update = this.getUpdate();
+//   if (update.password) {
+//     bcrypt.genSalt(10, (saltError, salt) => {
+//       if (saltError) return next(saltError);
+//       else bcrypt.hash(update.password, salt, (hashError: Error, hash: string) => {
+//         if (hashError) return next(hashError);
+//         this.getUpdate().password = hash;
+//         next();
+//       });
+//     });
+//   } else next();
+// });
 
 userSchema.methods.comparePassword = function (
     password: string,

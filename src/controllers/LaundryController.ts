@@ -37,6 +37,19 @@ class LaundryController implements ILaundryController {
     });
   }
 
+  online(req: Request, res: Response): void {
+    const {idLaundry, status} = req.body;
+    Laundry.findOneAndUpdate({ _id: idLaundry }, { status }, null, (err, result) => {
+      if (err) res.status(500).send(internalServerError);
+      else {
+        if (result) res.status(200).send(responseWrapper(
+          result, 'Berhasil update status online', 200
+        ));
+        else res.status(404).send(responseWrapper(null, 'Laundry tidak ditemukan', 404));
+      }
+    });
+  }
+
   delete(req: Request, res: Response): void {
     const { id } = req.params;
     if (!id) res.send(400).send(responseWrapper(null, 'Laundry id harus dikirim.', 400));

@@ -28,4 +28,6 @@ const initDB = () => {
   });
 };
 
+export const conn = mongoose.connection;
+
 export default initDB;

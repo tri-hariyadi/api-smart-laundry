@@ -4,6 +4,7 @@ interface IUserController {
   register(req: Request, res: Response): void;
   login(req: Request, res: Response): void;
   logout(req: Request, res: Response): void;
+  changeFcmToken(req: Request, res: Response): void;
   updateUser(req: Request, res: Response): void;
   updatePassword(req: Request, res: Response): void;
   updatePhotoProfile(req: Request, res: Response): void;

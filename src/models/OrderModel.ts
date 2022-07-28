@@ -11,12 +11,12 @@ type OrderDocument = Document & {
     tag?: string;
   }[];
   address: {
-    city: string;
-    street: string;
+    addressName: string;
+    address: string;
+    detailAddress: string;
     lat: number;
     long: number
   },
-  pickUpTime: Date;
   totalPrice: number;
   total: number;
   note?: string;
@@ -32,25 +32,29 @@ type OrderDocument = Document & {
 
 type OrderInput = {
   service: OrderDocument['service'];
-  sub_service: OrderDocument['sub_service'];
+  sub_service?: OrderDocument['sub_service'];
   address: OrderDocument['address'];
-  pickUpTime: OrderDocument['pickUpTime'];
   totalPrice: OrderDocument['totalPrice'];
   total: OrderDocument['total'];
   note: OrderDocument['note'];
   payment: OrderDocument['payment'];
+  progress?: OrderDocument['progress'];
   id_merchant: OrderDocument['id_merchant'];
   id_customer: OrderDocument['id_customer'];
 }
 
 const addressSchema = new Schema({
-  city: {
+  addressName: {
     type: Schema.Types.String,
-    required: [true, 'Kota harus diisi']
+    required: false,
   },
-  street: {
+  address: {
     type: Schema.Types.String,
-    required: [true, 'Jalan harus diisi']
+    required: false
+  },
+  detailAddress: {
+    type: Schema.Types.String,
+    required: false
   },
   lat: {
     type: Schema.Types.Number,
@@ -99,10 +103,6 @@ const orderSchema = new Schema(
       type: addressSchema,
       required: [true, 'Alamat harus diisi']
     },
-    pickUpTime: {
-      type: Schema.Types.Date,
-      required: [true, 'Waktu pickup harus diisi']
-    },
     totalPrice: {
       type: Schema.Types.Number,
       required: [true, 'Total harga harus diisi']
@@ -129,6 +129,11 @@ const orderSchema = new Schema(
     progress: {
       type: [progressSchema],
       required: [true, 'Progress harus diisi']
+    },
+    status: {
+      type: Schema.Types.String,
+      required: [true, 'Status harus diisi'],
+      default: '0'
     }
   },
   {
@@ -157,7 +162,7 @@ orderSchema.pre('save', function (this: OrderDocument, next: (err?: Error | unde
       },
       {
         name: 'Picked up',
-        desc: '',
+        desc: 'Kurir sedang dalam perjalanan untuk pickup laundry',
       },
       {
         name: 'In Process',
@@ -172,6 +177,7 @@ orderSchema.pre('save', function (this: OrderDocument, next: (err?: Error | unde
         desc: '',
       }
     ];
+    next();
   } else next();
 });
 

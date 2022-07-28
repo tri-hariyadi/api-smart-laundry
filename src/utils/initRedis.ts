@@ -8,6 +8,12 @@ const client = redis.createClient({
   }
 });
 
+// const client = redis.createClient({
+//   socket: {
+//     host: 'redis_cache'
+//   }
+// });
+
 (async () => {
   await client.connect();
 })();

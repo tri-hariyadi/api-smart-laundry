@@ -29,7 +29,7 @@ type ServicesDocument = Document & {
     type?: string;
   }[],
   promo?: string;
-  rating?: number;
+  // rating?: number;
 }
 
 type ServicesInput = {
@@ -41,7 +41,7 @@ type ServicesInput = {
   banner?: ServicesDocument['banner'];
   subServices?: ServicesDocument['subServices'];
   promo?: ServicesDocument['promo'];
-  rating?: ServicesDocument['rating'];
+  // rating?: ServicesDocument['rating'];
 }
 
 const servicesSchema = new Schema(
@@ -79,10 +79,10 @@ const servicesSchema = new Schema(
       type:  Schema.Types.ObjectId,
       ref: 'Promo'
     },
-    ratings: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Ratings'
-    }]
+    // ratings: [{
+    //   type: Schema.Types.ObjectId,
+    //   ref: 'Ratings'
+    // }]
   },
   {
     collection: 'services',

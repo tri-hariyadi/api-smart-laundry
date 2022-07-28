@@ -26,17 +26,17 @@ class App {
   }
 
   protected plugins(): void {
+    this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({
       extended: true
     }));
+    this.app.use('/public', express.static('public'));
     this.app.use(cookieParser());
     this.app.use(verifyApiKeyCredential);
     this.app.use(morgan('dev'));
     this.app.use(compression());
     this.app.use(helmet());
-    this.app.use(cors());
-    this.app.use('/public', express.static('public'));
   }
 
   private notFoundErrorHandling() {

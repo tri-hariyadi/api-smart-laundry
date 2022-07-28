@@ -16,9 +16,11 @@ class RoleController implements IRoleController {
     if (error) new ValidationException().validationError(error, res);
     else role.save((err) => {
       if (err) {
-        if (JSON.parse(JSON.stringify(err)).code === 11000) return res.status(400).send(responseWrapper(
-          null, 'Code role sudah digunakan, silahkan input role lain.', 400
-        ));
+        if (JSON.parse(JSON.stringify(err)).code === 11000) {
+          return res.status(400).send(responseWrapper(
+            null, 'Code role atau Nama role sudah digunakan, silahkan input role lain.', 400
+          ));
+        }
         return res.status(500).send(internalServerError);
       }
       res.status(200).send(responseWrapper(

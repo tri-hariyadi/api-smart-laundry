@@ -32,11 +32,21 @@ class AuthMiddleware {
     jwt.verify(bearerToken, this.ACCESS_TOKEN_SECRET, (err, payload) => {
       if (err) return next(new AuthException('Autentikasi token tidak valid'));
       const data: DataPayload = payload as DataPayload;
-      client.get(data.aud)
+      client.lRange(data.aud, 0, -1)
         .then((reply) => {
-          if (reply && bearerToken === JSON.parse(reply).accessToken) next();
+          if (reply.length) {
+            for (let i = 0; i < reply.length; i++) {
+              const item = reply[i];
+              if (bearerToken === JSON.parse(item).accessToken) return next();
+              else if (i === (reply.length - 1)) return next(new AuthException('Autentikasi token tidak valid'));
+            }
+          } else {
+            next(new AuthException('Autentikasi token tidak valid'));
+          }
         })
-        .catch(() => next(new AuthException('Autentikasi token tidak valid')));
+        .catch(() => {
+          next(new AuthException('Autentikasi token tidak valid'));
+        });
     });
   };
 
@@ -47,11 +57,21 @@ class AuthMiddleware {
     jwt.verify(bearerToken, this.REFRESH_TOKEN_SECRET, (err, payload) => {
       if (err) return next(new AuthException('Autentikasi token tidak valid'));
       const data: DataPayload = payload as DataPayload;
-      client.get(data.aud)
+      client.lRange(data.aud, 0, -1)
         .then((reply) => {
-          if (reply && bearerToken === JSON.parse(reply).refreshToken) next();
+          if (reply.length) {
+            for (let i = 0; i < reply.length; i++) {
+              const item = reply[i];
+              if (bearerToken === JSON.parse(item).refreshToken) return next();
+              else if (i === (reply.length - 1)) return next(new AuthException('Autentikasi token tidak valid'));
+            }
+          } else {
+            next(new AuthException('Autentikasi token tidak valid'));
+          }
         })
-        .catch(() => next(new AuthException('Autentikasi token tidak valid')));
+        .catch(() => {
+          next(new AuthException('Autentikasi token tidak valid'));
+        });
     });
   };
 

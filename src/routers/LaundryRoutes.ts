@@ -9,6 +9,7 @@ class LaundryRoutes extends BaseRouter {
     this.router.post('/laundry/add', authJwt, LaundryController.create);
     this.router.get('/laundrys', authJwt, LaundryController.getAll);
     this.router.delete('/laundry/:id', authJwt, LaundryController.delete);
+    this.router.post('/laundry/online', authJwt, LaundryController.online);
   }
 
 }
