@@ -1,7 +1,10 @@
+/* eslint-disable no-console */
 import { unlinkSync } from 'fs';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import nodemailer from 'nodemailer';
+import bcrypt from 'bcryptjs';
 import responseWrapper, { internalServerError } from '../utils/responseWrapper';
 import IUserController from '../interfaces/controller.user.interface';
 import User, { UserDocument, UserInput } from '../models/UserModel';
@@ -116,10 +119,32 @@ class UserController implements IUserController {
       '-fullName, -email, -phoneNumber, -address, -role'
     );
     if (errMessage) res.status(400).send(responseWrapper(null, errMessage, 400));
-    else User.updateOne({ _id: id }, { password }).exec((err) => {
-      if (err) return res.status(500).send(internalServerError);
-      return res.status(200).send(responseWrapper( null, 'Update password berhasil', 200));
-    });
+    else {
+      User.findOne({ _id: id }).exec((err, result) => {
+        if (err) return res.status(500).send(internalServerError);
+        if (result) {
+          result.comparePassword(password, (matchError, isMatch) => {
+            if (matchError) {
+              return res.status(400).send(responseWrapper(null, 'Oops, ada yang salah', 400));
+            } else if (isMatch) {
+              return res.status(400).send(responseWrapper(
+                null, 'Password tidak boleh sama dengan password yang lama', 400));
+            }
+            bcrypt.genSalt(10, (saltError, salt) => {
+              if (saltError) return res.status(400).send(responseWrapper( null, 'Gagal ganti password', 400));
+              else bcrypt.hash(password, salt, (hashError: Error, hash: string) => {
+                if (hashError) return res.status(400).send(responseWrapper( null, 'Gagal ganti password', 400));
+                User.updateOne({ _id: id }, { password: hash }).exec((err) => {
+                  if (err) return res.status(500).send(internalServerError);
+                  client.DEL(id);
+                  return res.status(200).send(responseWrapper( null, 'Ganti password berhasil', 200));
+                });
+              });
+            });
+          });
+        } else res.status(400).send(responseWrapper( null, 'Gagal ganti password', 400));
+      });
+    }
   }
 
   updatePhotoProfile(req: Request, res: Response): void {
@@ -249,6 +274,90 @@ class UserController implements IUserController {
       if (message) res.status(400).send(responseWrapper(400, message, 400));
       else res.status(500).send(internalServerError);
     }
+  }
+
+  recoveryPassword(req: Request, res: Response): void {
+    User.findOne({ email: req.body.email }).exec((err, result) => {
+      if (err) return res.status(500).send(internalServerError);
+      if (result) {
+        const pattern = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const newGeneratePassword = Array(8).fill(pattern).map((x) => x[Math.floor(Math.random() * x.length)]).join('');
+        bcrypt.genSalt(10, (saltError, salt) => {
+          if (saltError) return res.status(400).send(responseWrapper(
+            { Message: 'Gagal recovery password' },
+            'Gagal recovery password', 400
+          ));
+          else bcrypt.hash(newGeneratePassword, salt, (hashError: Error, hash: string) => {
+            if (hashError) return res.status(400).send(responseWrapper(
+              { Message: 'Gagal recovery password' },
+              'Gagal recovery password', 400
+            ));
+            User.updateOne({ email: req.body.email }, { password: hash }).exec((err) => {
+              if (err) return res.status(500).send(internalServerError);
+              const transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
+                auth: {
+                  type: 'OAuth2',
+                  user: 'trihariyadi24@gmail.com',
+                  clientId: process.env.GMAIL_CLIENT_ID,
+                  clientSecret: process.env.GMAIL_SECRET,
+                  refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+                  accessToken: process.env.GMAIL_ACCESS_TOKEN
+                }
+              });
+
+              transporter.set('oauth2_provision_cb', (user, renew, callback) => {
+                // const accessToken = userTokens[user];
+                if (!user) {
+                  return callback(new Error('Unknown user'));
+                } else {
+                  return callback(null, user);
+                }
+              });
+
+              transporter.on('token', token => {
+                console.log('A new access token was generated');
+                console.log('User: %s', token.user);
+                console.log('Access Token: %s', token.accessToken);
+                console.log('Expires: %s', new Date(token.expires));
+              });
+
+              const mailOptions = {
+                from: 'no-replay@gmail.com',
+                to: req.body.email,
+                subject: 'Recovery Password Smart Laundry',
+                html: `
+                  <h2>Halo ${result.fullName}</h2>
+                  </br>
+                  <p>Ini adalah password baru hasil recovery untuk login ke aplikasi smart laundry, simpan
+                  dan jangan dibagikan kepada siapa pun</p>
+                  </br>
+                  <p>Password: ${newGeneratePassword}</p>
+                  </br>
+                  <p>Terima kasih</p>
+                `
+              };
+
+              transporter.sendMail(mailOptions, (err, info) => {
+                if (err) throw err;
+                console.log('Email sent: ' + info.response);
+              });
+              res.status(200).send(responseWrapper(
+                { Message: 'Password berhasil di recovery, silahkan cek email kamu' },
+                'Password berhasil di recovery, silahkan cek email kamu', 200
+              ));
+            });
+          });
+        });
+      } else {
+        res.status(400).send(responseWrapper(
+          { Message: 'Gagal recovery password' },
+          'Gagal recovery password, email tidak valid atau tidak terdaftar', 400
+        ));
+      }
+    });
   }
 
 }

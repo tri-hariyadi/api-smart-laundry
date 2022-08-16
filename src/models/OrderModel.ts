@@ -134,6 +134,10 @@ const orderSchema = new Schema(
       type: Schema.Types.String,
       required: [true, 'Status harus diisi'],
       default: '0'
+    },
+    isReviewed: {
+      type: Schema.Types.Boolean,
+      default: false
     }
   },
   {

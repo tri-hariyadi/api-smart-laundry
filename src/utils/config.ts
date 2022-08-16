@@ -25,7 +25,7 @@ const config = (env: keyof IConfig): environtment => {
       // DATABASE: 'mongodb://localhost:27017,localhost:27018/laundry_app?' + 'replicaSet=mongo-rs0&w=majority',
       // DATABASE: 'mongodb://localhost:27017,localhost:27018/laundry_app?' + 'replicaSet=mongo-rs&w=majority',
       APIKEY: process.env.API_KEY,
-      API_BASE_URl: 'http://localhost:8081',
+      API_BASE_URl: 'http://192.168.43.229:8082',
       ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
       REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET
     }

@@ -62,7 +62,7 @@ class OrderController implements IOrderController {
         const laundry = await User.findOne({ _id: id_merchant });
         await NotifController.webNotif(
           {
-            link: '/order',
+            link: '/',
             title: 'Orderan Masuk',
             message: 'Ada orderan masuk nih, buruan terima biar konsumen ngak kecewa.',
             payload: JSON.stringify({ service, sub_service, address, totalPrice,
@@ -217,7 +217,7 @@ class OrderController implements IOrderController {
     const { totalPay, totalOrder, id_service, laundryPosition, custPosition } = req.body;
     const distance = new Distance(
       laundryPosition.lat, laundryPosition.long, custPosition.lat, custPosition.long).getDistance();
-    const costDelivery = Math.round(distance * 8000);
+    const costDelivery = Math.round(distance * 4500);
     const costApp = 0;
 
     if (!totalPay) return res.status(400).send(responseWrapp({costDelivery, costApp}, 'Total pay harus diisi', 400));

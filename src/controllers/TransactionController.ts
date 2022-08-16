@@ -142,6 +142,15 @@ class TransactionController {
           'month' : month ? month : new Date().getUTCMonth() + 1,
           'year': year ? year : new Date().getUTCFullYear(),
         },
+      },
+      {
+        $group: {
+          _id: '$dayOfMonth',
+          totalIncome: { $sum: '$totalPrice' },
+        },
+      },
+      {
+        $sort: {_id: -1}
       }
     ]).exec((err, result) => {
       if (err) res.status(500).send(internalServerError);
@@ -155,20 +164,48 @@ class TransactionController {
     const { month, year } = req.body;
     Stock.aggregate([
       {
-        $project: {
-          itemName: '$itemName',
-          cost: '$cost',
-          laundry: '$laundry',
-          month: { $month: '$createdAt' },
-          year: { $year: '$createdAt' },
+        $match: {
+          laundry: new mongoose.Types.ObjectId(laundry),
         },
       },
       {
-        $match : {
-          'laundry': new mongoose.Types.ObjectId(laundry),
-          'month' : month ? month : new Date().getUTCMonth() + 1,
-          'year': year ? year : new Date().getUTCFullYear(),
-        },
+        '$lookup': {
+          from: 'stockinout',
+          let: { stockId: '$_id', code: '$code', itemName: '$itemName' },
+          pipeline: [
+            {
+              $project: {
+                code: '$$code',
+                cost:'$cost',
+                stock_id: '$stock_id',
+                month: { $month: '$createdAt' },
+                year: { $year: '$createdAt' },
+              },
+            },
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$stock_id', '$$stockId'] }
+                  ],
+                },
+                month : month ? month : new Date().getUTCMonth() + 1,
+                year: year ? year : new Date().getUTCFullYear(),
+              },
+            },
+            {
+              $group: {
+                _id: '$code',
+                totalExpenses: { $sum: '$cost' },
+              },
+            },
+          ],
+          'as': 'stock_in_out',
+        }
+      },
+      { $unset: ['_id'] },
+      {
+        $project:  { stock_in_out:  '$stock_in_out', itemName: '$itemName' }
       }
     ]).exec((err, result) => {
       if (err) res.status(500).send(internalServerError);
@@ -221,34 +258,54 @@ class TransactionController {
         data.income = resultIncome;
         Stock.aggregate([
           {
-            $project: {
-              itemName: '$itemName',
-              cost: '$cost',
-              laundry: '$laundry',
-              month: { $month: '$createdAt' },
-              year: { $year: '$createdAt' },
-            },
-          },
-          {
-            $match : {
-              'laundry': new mongoose.Types.ObjectId(laundry),
-              'year': year ? year : new Date().getUTCFullYear(),
+            $match: {
+              laundry: new mongoose.Types.ObjectId(laundry),
             },
           },
           {
             $group: {
-              _id: {'month': '$month'},
-              total: {$sum: '$cost'}
-            }
+              _id: '$laundry',
+            },
           },
-          { $sort : { _id : 1 } },
           {
-            $project: {
-              month: {$arrayElemAt: [monthsArray, {$subtract: ['$_id.month', 1]}]},
-              total: '$total'
+            '$lookup': {
+              from: 'stockinout',
+              let: { code: '$code' },
+              pipeline: [
+                {
+                  $project: {
+                    code: '$$code',
+                    cost:'$cost',
+                    month: { $month: '$createdAt' },
+                    year: { $year: '$createdAt' },
+                  },
+                },
+                {
+                  $match: {
+                    year: year ? year : new Date().getUTCFullYear(),
+                  },
+                },
+                {
+                  $group: {
+                    _id: {month: '$month'},
+                    totalExpenses: { $sum: '$cost' },
+                  },
+                },
+                {
+                  $project:  {
+                    month: {$arrayElemAt: [monthsArray, {$subtract: ['$_id.month', 1]}]},
+                    total:'$totalExpenses'
+                  }
+                },
+                { $unset: ['_id'] },
+              ],
+              'as': 'stock_in_out',
             }
           },
-          {$unset: '_id'}
+          { $unset: ['_id'] },
+          {
+            $project:  { stock_in_out:'$stock_in_out' }
+          },
         ]).exec((err, resultExpense) => {
           if (err) res.status(500).send(internalServerError);
           else if (!resultIncome.length || !resultExpense.length) {

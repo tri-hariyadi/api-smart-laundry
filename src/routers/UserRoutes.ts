@@ -21,6 +21,7 @@ class UserRoutes extends BaseRouter {
     this.router.delete('/users/:id', authJwt, UserController.deleteUser);
     this.router.get('/users/token/refresh', authRefreshToken, UserController.refreshToken);
     this.router.post('/users/changefcmtoken', UserController.changeFcmToken);
+    this.router.post('/users/recoverypassword', UserController.recoveryPassword);
   }
 }
 

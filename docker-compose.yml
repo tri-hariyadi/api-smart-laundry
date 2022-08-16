@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 
 volumes:
   mongo_data:
@@ -12,6 +12,7 @@ services:
     image: mongo:4.4
     restart: always
     volumes:
+      - ./mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
       - mongo_data:/data/db
     ports:
       - '27017:27017'
@@ -19,12 +20,14 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=$MONGO_INITDB_ROOT_USERNAME
       - MONGO_INITDB_ROOT_PASSWORD=$MONGO_INITDB_ROOT_PASSWORD
+      - MONGO_INITDB_DATABASE=$MONGO_INITDB_DATABASE
     networks:
       - smart_laundry_network
   
   redis_cache:
     container_name: redis_cache
-    image: redis:7.0-rc-alpine
+    image: redis:latest
+    # image: redis:7.0-rc-alpine
     restart: always
     ports:
       - '6379:6379'
@@ -43,7 +46,8 @@ services:
     ports:
       - '8082:8082'
     volumes:
-      - /Users/trihariyadi/Projects/nodejs/api-smart-laundry/public/images
+      - /Users/trihariyadi/Projects/services/nodejs/api-smart-laundry/public/images/services/:/app/public/images/services
+      - /Users/trihariyadi/Projects/services/nodejs/api-smart-laundry/public/images/users/:/app/public/images/users
       # the volume above prevents our host system's node_modules to be mounted
       - media:/app/node_modules/
     depends_on:
@@ -51,7 +55,8 @@ services:
       - redis_cache
     env_file: .env
     environment:
-      - NODE_ENV=$NODE_ENV
+      - NODE_ENV=production
+      - PORT=$PORT
       - REFRESH_TOKEN_SECRET=$REFRESH_TOKEN_SECRET
       - ACCESS_TOKEN_SECRET=$ACCESS_TOKEN_SECRET
       - API_KEY=$API_KEY

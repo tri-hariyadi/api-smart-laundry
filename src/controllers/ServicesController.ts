@@ -197,8 +197,7 @@ class ServicesController implements IServicesController {
 
   async getServices(req: Request, res: Response): Promise<void> {
     const { lat, long } = req.params;
-    const data: Array<IServices> = [];
-    const services: Array<IServices> = await Services.find()
+    Services.find()
       .populate('promo', '-_id diskon end')
       .populate({
         path: 'laundry',
@@ -207,31 +206,37 @@ class ServicesController implements IServicesController {
           path: 'user_id',
           select: '-_id -password -createdAt -updatedAt -__v',
         }
-      });
-    if (!services.length) res.status(500).send(internalServerError);
-    else {
-      services.filter(item => {
-        const lat2 = item.laundry.user_id.address.lat;
-        const long2 = item.laundry.user_id.address.long;
-        const distance = new Distance(Number(lat), Number(long), lat2, long2).getDistance();
-        if (distance < 18) {
-          const dataItem = {
-            _id: item._id,
-            name: item.name,
-            banner: item.banner[0],
-            price: item.price,
-            city: item.laundry.user_id.address.city,
-            status: item.laundry.status,
-            diskon: item.promo && new Date().getTime() < new Date(item.promo.end).getTime()
-              ? item.promo.diskon : null
-          };
-          data.push({...JSON.parse(JSON.stringify(dataItem)), distance});
+      })
+      .exec((err, resp) => {
+        if (err) return res.status(500).send(internalServerError);
+        if (resp) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const data: Array<any> = [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const value of (resp as any)) {
+            const lat2 = value.laundry.user_id.address.lat;
+            const long2 = value.laundry.user_id.address.long;
+            const distance = new Distance(Number(lat), Number(long), lat2, long2).getDistance();
+            if (distance < 18) {
+              const dataItem = {
+                _id: value._id,
+                name: value.name,
+                banner: value.banner[0],
+                price: value.price,
+                laundry: value.laundry.name,
+                address: value.laundry.user_id.address.address,
+                status: value.laundry.status,
+                diskon: value.promo && new Date().getTime() < new Date(value.promo.end).getTime()
+                  ? value.promo.diskon : null,
+                distance
+              };
+              data.push(dataItem);
+            }
+          }
+          return res.status(200).send(responseWrapper(data, 'Success get Services', 200));
         }
+        res.status(404).send(responseWrapper(null, 'Tidak ada servis laundry di daerah mu', 404));
       });
-      res.status(200).send(responseWrapper(
-        data.length? data : null, 'Success get Services', 200
-      ));
-    }
   }
 
   getService(req: Request, res: Response): void {

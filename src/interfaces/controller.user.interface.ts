@@ -12,6 +12,7 @@ interface IUserController {
   getUserById(req: Request, res: Response): void;
   deleteUser(req: Request, res: Response): void;
   refreshToken(req: Request, res: Response): void;
+  recoveryPassword(req: Request, res: Response): void;
 }
 
 export default IUserController;

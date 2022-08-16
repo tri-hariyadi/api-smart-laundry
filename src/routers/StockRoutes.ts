@@ -6,10 +6,19 @@ class StockRoutes extends BaseRouter {
   routes(): void {
     const authJwt = AuthMiddleware.verifyAccessToken;
 
-    this.router.post('/stock/create', authJwt, StockController.create);
-    this.router.post('/stock', authJwt, StockController.getAll);
-    this.router.put('/stock/update/:id', authJwt, StockController.update);
-    this.router.delete('/stock/:id', authJwt, StockController.delete);
+    //create
+    this.router.post('/stocks/create', authJwt, StockController.create);
+    this.router.post('/stocks/inout/create', authJwt, StockController.createInOut);
+    //read
+    this.router.get('/stocks/:id_laundry', authJwt, StockController.getAllStock);
+    this.router.post('/stocks/:id_laundry', authJwt, StockController.getStock);
+    this.router.post('/stocks/inout/:id_laundry', authJwt, StockController.getInOut);
+    //update
+    this.router.put('/stocks/:id', authJwt, StockController.update);
+    this.router.put('/stocks/inout/:id', authJwt, StockController.updateInOut);
+    //delete
+    this.router.delete('/stocks/:id', authJwt, StockController.deleteStock);
+    this.router.delete('/stocks/inout/:id', authJwt, StockController.deleteInOut);
   }
 
 }
