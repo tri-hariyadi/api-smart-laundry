@@ -1,18 +1,18 @@
 /* eslint-disable no-console */
 import * as redis from 'redis';
 
-const client = redis.createClient({
-  socket: {
-    port: 6379,
-    host: '127.0.0.1'
-  }
-});
-
 // const client = redis.createClient({
 //   socket: {
-//     host: 'redis_cache'
+//     port: 6379,
+//     host: '127.0.0.1'
 //   }
 // });
+
+const client = redis.createClient({
+  socket: {
+    host: 'redis_cache'
+  }
+});
 
 (async () => {
   await client.connect();

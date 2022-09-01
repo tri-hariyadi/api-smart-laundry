@@ -20,7 +20,7 @@ class TransactionController {
       {
         $match: {
           'id_merchant': new mongoose.Types.ObjectId(id_merchant),
-          'dayOfMonth': new Date().getUTCDate(),
+          'dayOfMonth': new Date().getDate(),
           'year': new Date().getUTCFullYear(),
         }
       },
